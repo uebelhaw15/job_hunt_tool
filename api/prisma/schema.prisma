@@ -7,38 +7,103 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Job ────────────────────────────────────────────────────────────────────
+
 model Job {
-  id          Int      @id @default(autoincrement())
-  company     String
-  role        String
-  status      String   @default("considering") // considering | applied | interviewing | offer | rejected | withdrawn
-  jobUrl      String?
-  location    String?
-  salary      String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  description JobDescription?
-  questions   Question[]
-}
-
-model JobDescription {
-  id        Int    @id @default(autoincrement())
-  jobId     Int    @unique
-  content   String
-  job       Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-}
-
-model Question {
   id        Int      @id @default(autoincrement())
-  jobId     Int?
-  category  String   // behavioral | technical | situational | company | general
-  question  String
-  answer    String?
+  company   String
+  role      String
+  // Considering | Applied | Phone Screen | Interview | Offer | Rejected | Passed
+  status    String   @default("Considering")
+  jobUrl    String?
+  location  String?
+  salary    String?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  job Job? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  description      JobDescription?
+  questions        Question[]
+  practiceSessions PracticeSession[]
+}
+
+// ─── Job Description ────────────────────────────────────────────────────────
+
+model JobDescription {
+  id      Int    @id @default(autoincrement())
+  jobId   Int    @unique
+  content String
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+// ─── Category ───────────────────────────────────────────────────────────────
+// User-manageable list of question categories. Seeded with defaults.
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+// ─── Question ───────────────────────────────────────────────────────────────
+// jobId is optional — null means the question lives in the global bank.
+// aiGenerated flags questions created by the AI practice engine.
+
+model Question {
+  id           Int      @id @default(autoincrement())
+  jobId        Int?
+  category     String   // references Category.name (stored as string for flexibility)
+  question     String
+  answer       String?
+  notes        String?
+  aiGenerated  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  job             Job?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  practiceAttempts PracticeAttempt[]
+}
+
+// ─── Practice Session ───────────────────────────────────────────────────────
+// Groups practice attempts. Optionally tied to a specific job.
+
+model PracticeSession {
+  id        Int      @id @default(autoincrement())
+  jobId     Int?
+  title     String
+  createdAt DateTime @default(now())
+
+  job      Job?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  attempts PracticeAttempt[]
+}
+
+// ─── Practice Attempt ───────────────────────────────────────────────────────
+// One attempt = user answers a question, AI scores and provides feedback.
+// score is stored as JSON string: { dimensions: {...}, grade: "B+" }
+
+model PracticeAttempt {
+  id         Int      @id @default(autoincrement())
+  sessionId  Int
+  questionId Int
+  answer     String
+  score      String?  // JSON: { dimensions: { clarity, specificity, relevance, structure }, grade }
+  aiFeedback String?
+  userNotes  String?
+  createdAt  DateTime @default(now())
+
+  session  PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ─── API Usage ──────────────────────────────────────────────────────────────
+// Logs every Anthropic API call for cost tracking (monthly + all-time).
+
+model ApiUsage {
+  id           Int      @id @default(autoincrement())
+  endpoint     String   // e.g. "generate-questions" | "score-attempt"
+  inputTokens  Int
+  outputTokens Int
+  costUsd      Float
+  createdAt    DateTime @default(now())
 }
