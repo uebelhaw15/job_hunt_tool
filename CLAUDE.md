@@ -48,11 +48,12 @@ Each feature/fix follows this sequence:
 
 1. **create-issue** → Define scope, requirements, and acceptance criteria
 2. **exploration-phase** → Analyze codebase, identify dependencies, ask clarifying questions
-3. **create-plan** → Formal markdown plan with tracked steps (requires your approval)
-4. **execute-plan** → Implement precisely as planned, update progress in PLAN.md
-5. **review** → Claude reviews implementation (run `/review`)
-6. **peer-review** → Codex reviews independently, Claude evaluates (see below)
-7. **document** → Update PLAN.md and relevant documentation
+3. **architecture** → Update `ARCHITECTURE.md` with design decisions before implementation (run `/architecture`)
+4. **create-plan** → Formal markdown plan with tracked steps (requires your approval)
+5. **execute-plan** → Implement precisely as planned, update progress in PLAN.md
+6. **review** → Claude reviews implementation (run `/review`)
+7. **peer-review** → Codex reviews independently, Claude evaluates (see below)
+8. **document** → Update CHANGELOG.md and relevant documentation (run `/document`)
 
 ### Peer Review Process
 
@@ -165,6 +166,8 @@ npm run db:studio --workspace=api
 | File | Purpose |
 |------|---------|
 | [PLAN.md](PLAN.md) | Feature tracking with progress |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Design decisions, module map, ADRs |
+| [CHANGELOG.md](CHANGELOG.md) | User-facing change history |
 | [api/prisma/schema.prisma](api/prisma/schema.prisma) | Database schema |
 | [api/src/index.ts](api/src/index.ts) | Fastify entry point |
 | [web/src/App.tsx](web/src/App.tsx) | React root component |
