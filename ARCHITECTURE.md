@@ -6,6 +6,134 @@ Personal interview prep and job tracking tool. Single-user, local-first, no auth
 
 ---
 
+## System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph Browser["Browser — localhost:5173"]
+        direction TB
+        subgraph Pages["Pages"]
+            P1[Jobs]
+            P2[Job Detail]
+            P3[Question Bank]
+            P4[Practice]
+            P5[Settings]
+        end
+        subgraph Components["Shared Components"]
+            C1[QuestionCard]
+            C2[JobForm]
+            C3[QuestionForm]
+            C4[Layout / Sidebar]
+        end
+        subgraph UIKit["UI Primitives"]
+            U1[Button · Input · Textarea]
+            U2[Modal · Toast · Select]
+        end
+        AC["lib/api.ts — Typed HTTP Client"]
+    end
+
+    subgraph APIServer["API Server — localhost:3001  •  Fastify + TypeScript ESM"]
+        direction TB
+        R["Route Handlers\n/jobs · /questions · /categories\n/practice · /api-usage"]
+        subgraph AILayer["AI Layer"]
+            CH["callClaude()\nHelper"]
+        end
+        PRM["Prisma ORM"]
+    end
+
+    subgraph DataLayer["Data"]
+        DB[("SQLite\ndev.db")]
+    end
+
+    subgraph External["External Services"]
+        ANT["Anthropic API\nclaude-haiku-4-5-20251001"]
+    end
+
+    Pages -->|uses| Components
+    Pages -->|calls| AC
+    Components -->|uses| UIKit
+    AC -->|"HTTP REST / JSON\nfetch()"| R
+    R --> PRM
+    R --> CH
+    CH -->|"@anthropic-ai/sdk\nANTHROPIC_API_KEY"| ANT
+    CH -.->|"logs tokens + cost"| PRM
+    PRM -->|SQL| DB
+```
+
+---
+
+## Data Model Diagram
+
+```mermaid
+erDiagram
+    Job ||--o| JobDescription : "has one"
+    Job ||--o{ Question : "job-specific questions"
+    Job ||--o{ PracticeSession : "linked to"
+    Category ||--o{ Question : "categorizes"
+    PracticeSession ||--o{ PracticeAttempt : "contains"
+    Question ||--o{ PracticeAttempt : "attempted in"
+    PracticeAttempt ||--|| ApiUsage : "triggers"
+
+    Job {
+        int id PK
+        string company
+        string role
+        string status "Considering · Applied · Interview · Offer · Rejected"
+        string location "nullable"
+        string salary "nullable"
+        string jobUrl "nullable"
+        string notes "nullable"
+    }
+
+    Question {
+        int id PK
+        int jobId FK "nullable — null means global bank"
+        string category
+        string question
+        string answer "nullable"
+        string notes "nullable"
+        bool aiGenerated
+    }
+
+    PracticeSession {
+        int id PK
+        int jobId FK "nullable — optional job link"
+        string title
+    }
+
+    PracticeAttempt {
+        int id PK
+        int sessionId FK
+        int questionId FK
+        string answer
+        string score "JSON — grade + dimension scores"
+        string aiFeedback "nullable"
+        string userNotes "nullable"
+    }
+
+    ApiUsage {
+        int id PK
+        string model
+        int inputTokens
+        int outputTokens
+        float costUsd
+        datetime createdAt
+    }
+
+    JobDescription {
+        int id PK
+        int jobId FK
+        string content "full JD text"
+    }
+
+    Category {
+        int id PK
+        string name
+    }
+```
+
+---
+
 ## Module Map
 
 ### `api/`
@@ -126,3 +254,4 @@ App (router + ToastProvider)
 | Date | Change |
 |------|--------|
 | 2026-02-23 | Initial architecture document created — covers v1 full implementation |
+| 2026-02-23 | Added Mermaid system architecture diagram and ER data model diagram |
